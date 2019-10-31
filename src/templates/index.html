@@ -1,0 +1,86 @@
+<html>
+    <head>
+        <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+    </head>
+
+    <body>
+        
+        {% for video in videos %}
+
+            <h1>{{ video }} </h1>
+            <div style="display: flex;">
+                <img id='{{ video }}' src="">
+                <div id="{{ video }}_chart" style="flex: 1;"></div>
+            </div>
+            
+        {% endfor %}
+
+        <script>
+            const wsURI = "ws://0.0.0.0:8000/ws";
+            const videos = {{ videos | safe }};
+            const visibleDataLength = 300;
+
+            videos.forEach(video => {
+                runVideoAndChart(video);
+            });
+
+            async function runVideoAndChart (video) {
+
+                const video_element = document.getElementById(video);
+                var chart_data = [];
+
+                function updateChart() {
+                    var data_len = chart_data.length;
+                    
+                    if (data_len > visibleDataLength) {
+                        chart_data.splice(0, data_len - visibleDataLength);
+                    }
+
+                    chart.render();
+                }
+
+                var chart = new CanvasJS.Chart(video + "_chart", {
+                    title :{
+                        text: video + " rectangles per frame"
+                    },
+                    axisY: {
+                        includeZero: true,
+                        interval: 1,
+                        maximum: 5,
+                        title: "rectangles"
+                    },
+                    axisX: {
+                        title: "frame"
+                    },
+                    data: [{
+                        type: "stepLine",
+                        markerSize: 0,
+                        dataPoints: chart_data
+                    }]
+                });
+                updateChart(chart);
+
+                window.setInterval(function () {
+                    updateChart(chart);
+                }, 1000)
+                
+                var ws = new WebSocket(wsURI);
+                ws.onopen = function(e) {
+                    ws.send(video);
+                };
+                
+                ws.onmessage = function(event) {
+                    if (typeof event.data == 'string') {
+                        var frame_data = JSON.parse(event.data);
+                        chart_data.push({
+                            x: frame_data.f_count,
+                            y: frame_data.r_count
+                        });
+                    } else {    
+                        video_element.src = URL.createObjectURL(event.data);
+                    }
+                }
+            }
+        </script>
+    </body>
+</html>
