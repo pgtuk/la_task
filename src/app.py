@@ -34,6 +34,7 @@ async def video_stream(ws):
     video_name = await ws.receive_text()
     if video_name not in os.listdir(VIDEOS_DIR):
         await ws.close()
+        return 
 
     with Video(f'{VIDEOS_DIR}/{video_name}') as video:
         f_count = 1
